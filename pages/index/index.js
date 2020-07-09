@@ -1,4 +1,7 @@
 //index.js
+
+const { wx_login } = require("../../utils/request")
+
 //获取应用实例
 const app = getApp()
 
@@ -15,7 +18,9 @@ Page({
       url: '../logs/logs'
     })
   },
+
   onLoad: function () {
+    const _this = this
     if (app.globalData.userInfo) {
       this.setData({
         userInfo: app.globalData.userInfo,
@@ -25,6 +30,7 @@ Page({
       // 由于 getUserInfo 是网络请求，可能会在 Page.onLoad 之后才返回
       // 所以此处加入 callback 以防止这种情况
       app.userInfoReadyCallback = res => {
+        _this.uploadUserInfo(res.userInfo, res.iv, res.encryptedData)
         this.setData({
           userInfo: res.userInfo,
           hasUserInfo: true
@@ -44,51 +50,34 @@ Page({
     }
   },
 
-  uploadUserInfo : function (userInfo){
-    const _this = this
-    wx.request({
-      url: 'http://localhost:8090/user_info/action/login',
-      method: 'POST',
-      data: userInfo,
-      success(res){
-        console.log(res)
-        if(res.code === 0){
-          app.globalData.userInfo = e.detail.userInfo
-          _this.setData({
-            userInfo: e.detail.userInfo,
-            hasUserInfo: true
-          })
-           wx.showToast({title: '登录成功', mask:true})
-        }else{
-        }
-      },
-      fail(res){
-        console.log(res)
-        wx.showToast({title: '登录失败！' + res.errMsg, icon: 'none', duration: 4000, mask:true})
-      }
+  getUserInfo: function(e) {
+    wx.showLoading({
+      title: '加载中',
+    })
+    this.uploadUserInfo(e.detail.userInfo, e.detail.iv, e.detail.encryptedData)
+    app.globalData.userInfo = e.detail.userInfo
+    this.setData({
+      userInfo: e.detail.userInfo,
+      hasUserInfo: true
     })
   },
 
-  getUserInfo: function(e) {
-    console.log(e)
-    const _this = this
+  uploadUserInfo : function (userInfo, iv, encryptedData){
     let uploadData = {}
     wx.login({
       success (res) {
         if (res.code) {
-          console.log(res)
-          uploadData['avatarUrl'] = e.detail.userInfo.avatarUrl
-          uploadData['city'] = e.detail.userInfo.city
-          uploadData['country'] = e.detail.userInfo.country
-          uploadData['nickName'] = e.detail.userInfo.nickName
-          uploadData['province'] = e.detail.userInfo.province
-          uploadData['encryptedData'] = e.detail.encryptedData
-          uploadData['iv'] = e.detail.iv
+          uploadData['avatarUrl'] = userInfo.avatarUrl
+          uploadData['city'] = userInfo.city
+          uploadData['country'] = userInfo.country
+          uploadData['nickName'] = userInfo.nickName
+          uploadData['province'] = userInfo.province
+          uploadData['encryptedData'] = encryptedData
+          uploadData['iv'] = iv
           uploadData['code'] = res.code
-          console.log(uploadData)
-          _this.uploadUserInfo(uploadData)
+          wx_login(uploadData)
         } else {
-          wx.showToast({title: '登录失败！' + res.errMsg, icon: 'none', duration: 4000, mask:true})
+          wx.showToast({title: '登录失败！请检查网络', icon: 'none', duration: 4000, mask:true})
         }
       }
     })
